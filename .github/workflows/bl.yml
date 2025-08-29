@@ -1,0 +1,39 @@
+name: Windows P
+
+on:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enable Protocol
+        run: |
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          net user runneradmin MyP@ssw0rd123
+
+ 
+      - name: Install OpenVPN
+        shell: powershell
+        run: |
+          if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
+            Set-ExecutionPolicy Bypass -Scope Process -Force
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+            Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+          }
+          choco install openvpn -y --no-progress
+
+
+      - name: Connect to VPN
+        shell: powershell
+        run: |
+          $ovpn = Join-Path $env:GITHUB_WORKSPACE "open.ovpn"
+          & "C:\Program Files\OpenVPN\bin\openvpn.exe" --config "$ovpn"
+
+      
